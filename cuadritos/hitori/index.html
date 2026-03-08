@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hitori — Cuadritos</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%231C1917'/><rect x='2' y='2' width='12' height='12' fill='%23F5F0E8'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7041317094051877" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --cream:     #F5F0E8;
+  --paper:     #FDFAF4;
+  --ink:       #1C1917;
+  --ink-light: #4A4540;
+  --ink-faint: #9B9188;
+  --grid-line: #C8BFB0;
+  --shaded:    #1C1917;
+  --shaded-fg: #F5F0E8;
+  --cell:      72px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Spectral', Georgia, serif;
+  min-height: 100vh;
+  background: var(--cream);
+  background-image:
+    radial-gradient(ellipse at 15% 40%, rgba(200,185,150,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 15%, rgba(180,165,130,0.12) 0%, transparent 50%);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── Back nav ──────────────────────────────────────────────── */
+
+#back-nav {
+  align-self: flex-start;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-decoration: none;
+  padding: 20px 28px;
+  transition: color 120ms;
+}
+#back-nav:hover { color: var(--ink); }
+
+/* ── Header ─────────────────────────────────────────────────── */
+
+header {
+  text-align: center;
+  padding: 16px 24px 40px;
+}
+
+.eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.8rem, 7vw, 4.5rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.tagline {
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--ink-light);
+}
+
+/* ── Instructions ────────────────────────────────────────────── */
+
+.rules {
+  max-width: 400px;
+  margin: 0 auto 36px;
+  padding: 0 24px;
+}
+
+.rules ol {
+  list-style: none;
+  counter-reset: rule;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rules li {
+  counter-increment: rule;
+  font-size: 0.82rem;
+  color: var(--ink-light);
+  font-style: italic;
+  line-height: 1.5;
+  padding-left: 20px;
+  position: relative;
+}
+
+.rules li::before {
+  content: counter(rule) ".";
+  position: absolute;
+  left: 0;
+  font-family: 'DM Mono', monospace;
+  font-style: normal;
+  font-size: 0.65rem;
+  color: var(--ink-faint);
+  top: 3px;
+}
+
+/* ── Grid ────────────────────────────────────────────────────── */
+
+#board-wrap {
+  display: inline-block;
+  position: relative;
+  margin-bottom: 36px;
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(5, var(--cell));
+  grid-template-rows: repeat(5, var(--cell));
+  border-top: 2px solid var(--ink);
+  border-left: 2px solid var(--ink);
+  user-select: none;
+}
+
+.cell {
+  width: var(--cell);
+  height: var(--cell);
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(0.9rem, calc(var(--cell) * 0.3), 1.5rem);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 100ms, color 100ms;
+  position: relative;
+}
+
+.cell:hover:not(.shaded) {
+  background: rgba(28,25,23,0.06);
+}
+
+.cell.shaded {
+  background: var(--shaded);
+  color: var(--shaded-fg);
+}
+
+/* Error highlight */
+.cell.error {
+  background: #8B1A1A;
+  color: #F5F0E8;
+}
+
+/* ── Controls ────────────────────────────────────────────────── */
+
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 48px;
+}
+
+.btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink);
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+
+.btn:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ── Status ──────────────────────────────────────────────────── */
+
+#status {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  min-height: 1.2em;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* ── Win overlay ─────────────────────────────────────────────── */
+
+#win-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(28,25,23,0.85);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+#win-overlay.show {
+  display: flex;
+  animation: fadeIn 400ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.win-box {
+  background: var(--paper);
+  padding: 48px 56px;
+  text-align: center;
+  border: 2px solid var(--ink);
+  animation: riseIn 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  max-width: calc(100vw - 48px);
+}
+
+@keyframes riseIn {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.win-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 12px;
+}
+
+.win-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.win-sub {
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--ink-light);
+  margin-bottom: 32px;
+}
+
+.win-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  padding: 14px 32px;
+  cursor: pointer;
+  transition: opacity 120ms;
+}
+.win-btn:hover { opacity: 0.8; }
+
+/* ── Footer ──────────────────────────────────────────────────── */
+
+footer {
+  margin-top: auto;
+  padding: 24px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-top: 1px solid var(--grid-line);
+  width: 100%;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<a id="back-nav" href="../">← Cuadritos</a>
+
+<header>
+  <p class="eyebrow">Pasatiempos de lógica — 02</p>
+  <h1>Hitori</h1>
+  <p class="tagline">Elimina los repetidos</p>
+</header>
+
+<div class="rules">
+  <ol>
+    <li>Sombrea celdas para que ningún número se repita en una fila o columna.</li>
+    <li>Las celdas sombreadas no pueden tocarse entre sí (ni horizontal ni verticalmente).</li>
+    <li>Todas las celdas sin sombrear deben estar conectadas entre sí.</li>
+  </ol>
+</div>
+
+<div id="status"></div>
+
+<div id="board-wrap">
+  <div id="grid"></div>
+</div>
+
+<div class="controls">
+  <button class="btn" id="btn-reset">Reiniciar</button>
+</div>
+
+<div id="win-overlay">
+  <div class="win-box">
+    <p class="win-eyebrow">Puzzle resuelto</p>
+    <h2 class="win-title">¡Correcto!</h2>
+    <p class="win-sub">Todos los números están en orden.</p>
+    <button class="win-btn" id="win-again">Jugar de nuevo</button>
+  </div>
+</div>
+
+<footer>Cuadritos &mdash; smartinez.co</footer>
+
+<script>
+// ── Puzzle data ───────────────────────────────────────────────
+
+const PUZZLE = [
+  [3, 4, 3, 2, 1],
+  [5, 1, 1, 3, 2],
+  [4, 5, 2, 5, 3],
+  [2, 2, 3, 1, 4],
+  [2, 1, 2, 4, 5],
+];
+
+// Correct shaded cells (row, col)
+const SOLUTION = new Set([
+  '0,2', '1,1', '2,3', '3,0', '4,2'
+]);
+
+const N = 5;
+
+// ── State ──────────────────────────────────────────────────────
+
+let shaded = new Set(); // 'r,c' strings
+
+// ── Build grid ─────────────────────────────────────────────────
+
+const grid = document.getElementById('grid');
+
+function buildGrid() {
+  grid.innerHTML = '';
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+      cell.textContent = PUZZLE[r][c];
+      cell.addEventListener('click', () => toggle(r, c));
+      grid.appendChild(cell);
+    }
+  }
+}
+
+// ── Toggle shade ───────────────────────────────────────────────
+
+function toggle(r, c) {
+  const key = `${r},${c}`;
+  if (shaded.has(key)) {
+    shaded.delete(key);
+  } else {
+    shaded.add(key);
+  }
+  render();
+  checkWin();
+}
+
+// ── Render ─────────────────────────────────────────────────────
+
+function render() {
+  const errors = findErrors();
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const key = `${r},${c}`;
+      const cell = grid.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+      cell.classList.toggle('shaded', shaded.has(key));
+      cell.classList.toggle('error', errors.has(key));
+    }
+  }
+}
+
+// ── Error detection (for visual feedback) ─────────────────────
+
+function findErrors() {
+  const errors = new Set();
+
+  // Adjacent shaded cells
+  for (const key of shaded) {
+    const [r, c] = key.split(',').map(Number);
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      if (shaded.has(`${r+dr},${c+dc}`)) {
+        errors.add(key);
+        errors.add(`${r+dr},${c+dc}`);
+      }
+    }
+  }
+
+  // Duplicate numbers in rows/cols (among unshaded)
+  for (let r = 0; r < N; r++) {
+    const seen = {};
+    for (let c = 0; c < N; c++) {
+      const key = `${r},${c}`;
+      if (shaded.has(key)) continue;
+      const v = PUZZLE[r][c];
+      if (seen[v] !== undefined) {
+        errors.add(key);
+        errors.add(`${r},${seen[v]}`);
+      } else {
+        seen[v] = c;
+      }
+    }
+  }
+  for (let c = 0; c < N; c++) {
+    const seen = {};
+    for (let r = 0; r < N; r++) {
+      const key = `${r},${c}`;
+      if (shaded.has(key)) continue;
+      const v = PUZZLE[r][c];
+      if (seen[v] !== undefined) {
+        errors.add(key);
+        errors.add(`${seen[v]},${c}`);
+      } else {
+        seen[v] = r;
+      }
+    }
+  }
+
+  return errors;
+}
+
+// ── Win check ──────────────────────────────────────────────────
+
+function checkWin() {
+  // 1. No duplicate unshaded numbers in rows
+  for (let r = 0; r < N; r++) {
+    const seen = new Set();
+    for (let c = 0; c < N; c++) {
+      if (shaded.has(`${r},${c}`)) continue;
+      const v = PUZZLE[r][c];
+      if (seen.has(v)) return;
+      seen.add(v);
+    }
+  }
+
+  // 2. No duplicate unshaded numbers in cols
+  for (let c = 0; c < N; c++) {
+    const seen = new Set();
+    for (let r = 0; r < N; r++) {
+      if (shaded.has(`${r},${c}`)) continue;
+      const v = PUZZLE[r][c];
+      if (seen.has(v)) return;
+      seen.add(v);
+    }
+  }
+
+  // 3. No adjacent shaded cells
+  for (const key of shaded) {
+    const [r, c] = key.split(',').map(Number);
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      if (shaded.has(`${r+dr},${c+dc}`)) return;
+    }
+  }
+
+  // 4. All unshaded cells connected
+  const unshaded = [];
+  for (let r = 0; r < N; r++)
+    for (let c = 0; c < N; c++)
+      if (!shaded.has(`${r},${c}`)) unshaded.push([r, c]);
+
+  if (unshaded.length === 0) return;
+
+  const visited = new Set();
+  const queue = [unshaded[0]];
+  visited.add(`${unshaded[0][0]},${unshaded[0][1]}`);
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nr = r + dr, nc = c + dc;
+      const nk = `${nr},${nc}`;
+      if (nr >= 0 && nr < N && nc >= 0 && nc < N && !shaded.has(nk) && !visited.has(nk)) {
+        visited.add(nk);
+        queue.push([nr, nc]);
+      }
+    }
+  }
+  if (visited.size !== unshaded.length) return;
+
+  // All checks pass
+  showWin();
+}
+
+// ── Win state ──────────────────────────────────────────────────
+
+function showWin() {
+  document.getElementById('win-overlay').classList.add('show');
+}
+
+// ── Reset ──────────────────────────────────────────────────────
+
+function reset() {
+  shaded.clear();
+  document.getElementById('win-overlay').classList.remove('show');
+  render();
+  document.getElementById('status').textContent = '';
+}
+
+// ── Init ───────────────────────────────────────────────────────
+
+// Responsive cell size
+const cellSize = Math.min(72, Math.floor((window.innerWidth - 48) / N));
+document.documentElement.style.setProperty('--cell', cellSize + 'px');
+
+buildGrid();
+render();
+
+document.getElementById('btn-reset').addEventListener('click', reset);
+document.getElementById('win-again').addEventListener('click', reset);
+</script>
+</body>
+</html>

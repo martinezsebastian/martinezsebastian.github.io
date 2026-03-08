@@ -164,7 +164,7 @@ h1 {
   z-index: 1;
 }
 
-#grid { display: grid; position: relative; z-index: 2; }
+#grid { display: grid; position: relative; z-index: 2; touch-action: none; }
 
 .cell {
   border-right: 1px solid var(--grid-line);
@@ -182,6 +182,43 @@ h1 {
   pointer-events: none;
   position: relative;
   z-index: 5;
+}
+
+/* ── Mobile layout ──────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  body { padding: 56px 12px 24px; justify-content: flex-start; }
+
+  header { margin-bottom: 16px; }
+  h1 { font-size: 2.4rem; }
+
+  #game-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+  }
+
+  #size-panel {
+    flex-direction: row;
+    min-width: unset;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .panel-label { display: none; }
+
+  .size-btn {
+    flex: 1;
+    border: 1px solid var(--ink) !important;
+    border-right: none !important;
+    border-top: 1px solid var(--ink) !important;
+    padding: 8px 4px 7px;
+  }
+  .size-btn:last-child { border-right: 1px solid var(--ink) !important; }
+
+  #controls { flex-wrap: wrap; justify-content: center; }
+  #hint { display: none; }
 }
 
 /* ── Rectangles ─────────────────────────────────────────────── */
@@ -420,7 +457,8 @@ const winOverlay = document.getElementById('win-overlay');
 
 function buildGrid() {
   const cfg    = SIZE_CONFIG[ROWS] || { cell: CELL, clueFont: Math.max(11, Math.round(CELL * 0.36)) };
-  CELL         = cfg.cell;
+  const maxFromViewport = Math.floor((window.innerWidth - 48) / COLS);
+  CELL         = Math.min(cfg.cell, maxFromViewport);
   const boardW = COLS * CELL, boardH = ROWS * CELL;
   grid.style.gridTemplateColumns = `repeat(${COLS}, ${CELL}px)`;
   grid.style.gridTemplateRows    = `repeat(${ROWS}, ${CELL}px)`;
@@ -463,6 +501,41 @@ function replayPuzzle() {
 
 buildGrid();
 document.addEventListener('mouseup', onMouseUp);
+
+// ── Touch support ────────────────────────────────────────────
+
+function cellFromPoint(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el && el.dataset.r !== undefined ? el : null;
+}
+
+grid.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  const cell = cellFromPoint(t.clientX, t.clientY);
+  if (!cell) return;
+  const r = +cell.dataset.r, c = +cell.dataset.c;
+  const idx = rectangles.findIndex(rect =>
+    r >= rect.r1 && r <= rect.r2 && c >= rect.c1 && c <= rect.c2);
+  if (idx !== -1) { rectangles.splice(idx, 1); render(); return; }
+  drag = { r1: r, c1: c, r2: r, c2: c };
+  updatePreview();
+}, { passive: false });
+
+grid.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!drag) return;
+  const t = e.touches[0];
+  const cell = cellFromPoint(t.clientX, t.clientY);
+  if (!cell) return;
+  drag.r2 = +cell.dataset.r; drag.c2 = +cell.dataset.c;
+  updatePreview();
+}, { passive: false });
+
+grid.addEventListener('touchend', e => {
+  e.preventDefault();
+  onMouseUp();
+}, { passive: false });
 
 function onMouseDown(e) {
   e.preventDefault();
