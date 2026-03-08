@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shikaku — Cuadritos</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%231C1917'/><rect x='2' y='2' width='12' height='12' fill='%23F5F0E8'/></svg>">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7041317094051877" crossorigin="anonymous"></script>
+<script src="puzzle-engine.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@500&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --cream:      #F5F0E8;
+  --paper:      #FDFAF4;
+  --ink:        #1C1917;
+  --ink-light:  #4A4540;
+  --ink-faint:  #9B9188;
+  --grid-line:  #C8BFB0;
+  --shadow:     rgba(28,25,23,0.12);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Spectral', Georgia, serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px 20px;
+  background: var(--cream);
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(200,185,150,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(180,165,130,0.10) 0%, transparent 50%);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Back nav ───────────────────────────────────────────────── */
+
+#back-nav {
+  position: fixed;
+  top: 18px;
+  left: 22px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 110ms;
+}
+#back-nav:hover { color: var(--ink); }
+
+/* ── Header ─────────────────────────────────────────────────── */
+
+header { text-align: center; margin-bottom: 28px; }
+
+.eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 6px;
+}
+
+h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 3.4rem;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.rule { width: 36px; height: 2px; background: var(--ink); margin: 12px auto; }
+
+.subtitle {
+  font-style: italic;
+  font-size: 0.88rem;
+  color: var(--ink-light);
+  max-width: 300px;
+  line-height: 1.55;
+}
+
+/* ── Layout ─────────────────────────────────────────────────── */
+
+#game-row {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+/* ── Size panel ─────────────────────────────────────────────── */
+
+#size-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 86px;
+}
+
+.panel-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--grid-line);
+  margin-bottom: 1px;
+}
+
+.size-btn {
+  font-family: 'DM Mono', monospace;
+  border: 1px solid var(--ink);
+  border-top: none;
+  background: transparent;
+  color: var(--ink);
+  padding: 10px 12px 9px;
+  cursor: pointer;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: background 110ms, color 110ms;
+}
+
+.size-btn:first-of-type { border-top: 1px solid var(--ink); }
+.size-btn:hover { background: rgba(28,25,23,0.07); }
+.size-btn.active { background: var(--ink); color: var(--paper); pointer-events: none; }
+
+.size-dim { font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em; }
+.size-lbl { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.65; }
+
+/* ── Board ──────────────────────────────────────────────────── */
+
+#board-wrap {
+  position: relative;
+  display: inline-block;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  line-height: 0;
+  box-shadow:
+    0 0 0 1px rgba(28,25,23,0.05),
+    0 4px 20px var(--shadow),
+    0 14px 44px rgba(28,25,23,0.07);
+}
+
+#rects-layer {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+#grid { display: grid; position: relative; z-index: 2; }
+
+.cell {
+  border-right: 1px solid var(--grid-line);
+  border-bottom: 1px solid var(--grid-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+}
+
+.clue {
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  color: var(--ink);
+  pointer-events: none;
+  position: relative;
+  z-index: 5;
+}
+
+/* ── Rectangles ─────────────────────────────────────────────── */
+
+.rect-div { position: absolute; pointer-events: none; }
+
+@keyframes rectAppear {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.rect-new { animation: rectAppear 150ms cubic-bezier(0.2, 0, 0.2, 1) forwards; }
+
+@keyframes rectShake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-5px); }
+  50%     { transform: translateX(5px); }
+  75%     { transform: translateX(-3px); }
+}
+
+/* ── Controls ───────────────────────────────────────────────── */
+
+footer {
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+#controls { display: flex; gap: 10px; align-items: center; }
+.ctrl-group { display: flex; }
+
+button {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  padding: 9px 24px;
+  transition: background 110ms, color 110ms;
+}
+
+.ctrl-group button:first-child { border-right: none; }
+button:hover  { background: var(--ink); color: var(--paper); }
+button:active { background: var(--ink-light); color: var(--paper); }
+
+#new-btn { background: var(--ink); color: var(--paper); }
+#new-btn:hover { background: var(--ink-light); border-color: var(--ink-light); }
+#new-btn:disabled, .size-btn:disabled { opacity: 0.45; cursor: default; pointer-events: none; }
+
+#hint { font-style: italic; font-size: 0.78rem; color: var(--ink-faint); }
+
+/* ── Win overlay ────────────────────────────────────────────── */
+
+#win-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(28,25,23,0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+  transition: background 380ms ease, backdrop-filter 380ms ease;
+}
+
+#win-overlay.visible {
+  background: rgba(28,25,23,0.80);
+  pointer-events: all;
+  backdrop-filter: blur(3px);
+}
+
+#win-card {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  padding: 52px 60px;
+  text-align: center;
+  transform: translateY(16px) scale(0.95);
+  opacity: 0;
+  transition: transform 340ms cubic-bezier(0.2,0,0.2,1) 120ms, opacity 340ms ease 120ms;
+  box-shadow: 0 28px 72px rgba(28,25,23,0.35);
+}
+
+#win-overlay.visible #win-card { transform: translateY(0) scale(1); opacity: 1; }
+
+.win-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+}
+
+.win-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 3.8rem;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.win-rule { width: 28px; height: 2px; background: var(--ink); margin: 16px auto; }
+
+.win-sub {
+  font-style: italic;
+  font-size: 0.88rem;
+  color: var(--ink-light);
+  margin-bottom: 30px;
+}
+
+#play-again-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 10px 30px;
+  transition: background 110ms;
+}
+#play-again-btn:hover { background: var(--ink-light); border-color: var(--ink-light); }
+
+/* ── Confetti ───────────────────────────────────────────────── */
+
+.confetti-piece { position: fixed; pointer-events: none; z-index: 110; border-radius: 1px; }
+
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(var(--fall-dist)) rotate(var(--rot)) scale(0.6); opacity: 0; }
+}
+</style>
+</head>
+
+<body>
+
+<a id="back-nav" href="../">← Cuadritos</a>
+
+<header>
+  <p class="eyebrow">Rectángulos numéricos</p>
+  <h1>Shikaku</h1>
+  <div class="rule"></div>
+  <p class="subtitle">Divide la cuadrícula en rectángulos — cada uno debe contener exactamente un número igual a su área.</p>
+</header>
+
+<div id="game-row">
+
+  <aside id="size-panel">
+    <p class="panel-label">Tamaño</p>
+    <button class="size-btn" data-size="3">
+      <span class="size-dim">3 × 3</span>
+      <span class="size-lbl">Rápido</span>
+    </button>
+    <button class="size-btn active" data-size="5">
+      <span class="size-dim">5 × 5</span>
+      <span class="size-lbl">Clásico</span>
+    </button>
+    <button class="size-btn" data-size="7">
+      <span class="size-dim">7 × 7</span>
+      <span class="size-lbl">Medio</span>
+    </button>
+    <button class="size-btn" data-size="15">
+      <span class="size-dim">15 × 15</span>
+      <span class="size-lbl">Difícil</span>
+    </button>
+  </aside>
+
+  <div id="main-col">
+    <div id="board-wrap">
+      <div id="rects-layer"></div>
+      <div id="grid"></div>
+    </div>
+
+    <footer>
+      <div id="controls">
+        <div class="ctrl-group">
+          <button id="undo-btn">Deshacer</button>
+          <button id="reset-btn">Reiniciar</button>
+        </div>
+        <button id="new-btn">Nuevo juego</button>
+      </div>
+      <p id="hint">Arrastra para dibujar &middot; Haz clic en un rectángulo para eliminarlo</p>
+    </footer>
+  </div>
+
+</div>
+
+<div id="win-overlay">
+  <div id="win-card">
+    <p class="win-eyebrow">¡Completado!</p>
+    <p class="win-title">¡Resuelto!</p>
+    <div class="win-rule"></div>
+    <p class="win-sub">Todos los rectángulos colocados correctamente.</p>
+    <button id="play-again-btn">Nuevo juego</button>
+  </div>
+</div>
+
+<script>
+const SIZE_CONFIG = {
+  3:  { cell: 90,  clueFont: 32, maxArea:  4 },
+  5:  { cell: 68,  clueFont: 24, maxArea:  8 },
+  7:  { cell: 54,  clueFont: 19, maxArea: 14 },
+  15: { cell: 32,  clueFont: 12, maxArea: 20 },
+};
+
+let ROWS = 5, COLS = 5, CELL = SIZE_CONFIG[5].cell;
+
+let CLUES = {
+  '0,0': 2, '0,3': 6,
+  '2,0': 4, '2,4': 3,
+  '3,1': 4, '4,3': 6,
+};
+let initialCLUES = { ...CLUES };
+
+const COLORS = [
+  'rgba(196, 158,  78, 0.42)',
+  'rgba( 84, 140, 190, 0.42)',
+  'rgba( 95, 158, 110, 0.42)',
+  'rgba(190, 100, 110, 0.42)',
+  'rgba(148, 118, 185, 0.42)',
+  'rgba(175, 155,  60, 0.42)',
+];
+
+let rectangles = [], colorIdx = 0, drag = null, previewEl = null;
+
+const grid       = document.getElementById('grid');
+const rectsLayer = document.getElementById('rects-layer');
+const winOverlay = document.getElementById('win-overlay');
+
+function buildGrid() {
+  const cfg    = SIZE_CONFIG[ROWS] || { cell: CELL, clueFont: Math.max(11, Math.round(CELL * 0.36)) };
+  CELL         = cfg.cell;
+  const boardW = COLS * CELL, boardH = ROWS * CELL;
+  grid.style.gridTemplateColumns = `repeat(${COLS}, ${CELL}px)`;
+  grid.style.gridTemplateRows    = `repeat(${ROWS}, ${CELL}px)`;
+  grid.style.width = boardW + 'px'; grid.style.height = boardH + 'px';
+  rectsLayer.style.width = boardW + 'px'; rectsLayer.style.height = boardH + 'px';
+  grid.innerHTML = '';
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell'; cell.dataset.r = r; cell.dataset.c = c;
+      cell.style.width = CELL + 'px'; cell.style.height = CELL + 'px';
+      cell.style.borderRight  = (c === COLS - 1) ? 'none' : '1px solid var(--grid-line)';
+      cell.style.borderBottom = (r === ROWS - 1) ? 'none' : '1px solid var(--grid-line)';
+      const clueVal = CLUES[`${r},${c}`];
+      if (clueVal !== undefined) {
+        const span = document.createElement('span');
+        span.className = 'clue'; span.textContent = clueVal;
+        span.style.fontSize = cfg.clueFont + 'px';
+        cell.appendChild(span);
+      }
+      cell.addEventListener('mousedown', onMouseDown);
+      cell.addEventListener('mouseenter', onMouseEnter);
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function loadPuzzle(clueMap) {
+  CLUES = clueMap; initialCLUES = { ...clueMap };
+  rectangles = []; colorIdx = 0; drag = null;
+  removePreview(); winOverlay.classList.remove('visible');
+  buildGrid(); render();
+}
+
+function replayPuzzle() {
+  CLUES = { ...initialCLUES }; rectangles = []; colorIdx = 0; drag = null;
+  removePreview(); winOverlay.classList.remove('visible');
+  buildGrid(); render();
+}
+
+buildGrid();
+document.addEventListener('mouseup', onMouseUp);
+
+function onMouseDown(e) {
+  e.preventDefault();
+  const r = +this.dataset.r, c = +this.dataset.c;
+  const idx = rectangles.findIndex(rect =>
+    r >= rect.r1 && r <= rect.r2 && c >= rect.c1 && c <= rect.c2);
+  if (idx !== -1) { rectangles.splice(idx, 1); render(); return; }
+  drag = { r1: r, c1: c, r2: r, c2: c };
+  updatePreview();
+}
+
+function onMouseEnter() {
+  if (!drag) return;
+  drag.r2 = +this.dataset.r; drag.c2 = +this.dataset.c;
+  updatePreview();
+}
+
+function onMouseUp() {
+  if (!drag) return;
+  const { r1, c1, r2, c2 } = normalize(drag);
+  drag = null; removePreview();
+  if (isValidRect(r1, c1, r2, c2) && !hasOverlap(r1, c1, r2, c2)) {
+    rectangles.push({ r1, c1, r2, c2, color: COLORS[colorIdx % COLORS.length] });
+    colorIdx++; render(true); checkWin();
+  } else { flashInvalid(r1, c1, r2, c2); }
+}
+
+function normalize({ r1, c1, r2, c2 }) {
+  return { r1: Math.min(r1,r2), c1: Math.min(c1,c2), r2: Math.max(r1,r2), c2: Math.max(c1,c2) };
+}
+
+function isValidRect(r1, c1, r2, c2) {
+  const area = (r2-r1+1)*(c2-c1+1); let clueVal = null;
+  for (let r = r1; r <= r2; r++)
+    for (let c = c1; c <= c2; c++) {
+      const v = CLUES[`${r},${c}`];
+      if (v !== undefined) { if (clueVal !== null) return false; clueVal = v; }
+    }
+  return clueVal !== null && clueVal === area;
+}
+
+function hasOverlap(r1, c1, r2, c2) {
+  return rectangles.some(rect =>
+    r1 <= rect.r2 && r2 >= rect.r1 && c1 <= rect.c2 && c2 >= rect.c1);
+}
+
+function makeDiv(r1, c1, r2, c2, bg, border) {
+  const div = document.createElement('div');
+  div.className = 'rect-div';
+  div.style.left = (c1*CELL)+'px'; div.style.top = (r1*CELL)+'px';
+  div.style.width = ((c2-c1+1)*CELL)+'px'; div.style.height = ((r2-r1+1)*CELL)+'px';
+  div.style.background = bg; div.style.border = border;
+  return div;
+}
+
+function render(animateLast = false) {
+  rectsLayer.innerHTML = '';
+  rectangles.forEach((rect, i) => {
+    const div = makeDiv(rect.r1, rect.c1, rect.r2, rect.c2,
+      rect.color, '1.5px solid rgba(28,25,23,0.22)');
+    if (animateLast && i === rectangles.length - 1) div.classList.add('rect-new');
+    rectsLayer.appendChild(div);
+  });
+}
+
+function updatePreview() {
+  removePreview(); if (!drag) return;
+  const { r1, c1, r2, c2 } = normalize(drag);
+  const valid = isValidRect(r1, c1, r2, c2) && !hasOverlap(r1, c1, r2, c2);
+  previewEl = makeDiv(r1, c1, r2, c2,
+    valid ? 'rgba(28,25,23,0.07)' : 'rgba(28,25,23,0.04)',
+    valid ? '1.5px dashed rgba(28,25,23,0.50)' : '1.5px dashed rgba(28,25,23,0.22)');
+  rectsLayer.appendChild(previewEl);
+}
+
+function removePreview() { if (previewEl) { previewEl.remove(); previewEl = null; } }
+
+function flashInvalid(r1, c1, r2, c2) {
+  const div = makeDiv(r1, c1, r2, c2, 'rgba(180,50,50,0.18)', '1.5px solid rgba(160,40,40,0.5)');
+  div.style.animation = 'rectShake 320ms ease forwards';
+  rectsLayer.appendChild(div);
+  setTimeout(() => div.remove(), 380);
+}
+
+function checkWin() {
+  const covered = new Set();
+  for (const rect of rectangles)
+    for (let r = rect.r1; r <= rect.r2; r++)
+      for (let c = rect.c1; c <= rect.c2; c++)
+        covered.add(`${r},${c}`);
+  if (covered.size === ROWS * COLS) setTimeout(showWin, 180);
+}
+
+function showWin() {
+  winOverlay.classList.add('visible');
+  const palette = ['#C49E4E','#548CBE','#5F9E6E','#BE646E','#947AB9','#AF9B3C'];
+  const board = document.getElementById('board-wrap').getBoundingClientRect();
+  const cx = board.left + board.width/2, cy = board.top + board.height/2;
+  for (let i = 0; i < 36; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.background = palette[i % palette.length];
+    el.style.left = (cx + (Math.random()-0.5)*300)+'px';
+    el.style.top  = (cy + (Math.random()-0.5)*220)+'px';
+    el.style.width  = (5 + Math.random()*7)+'px';
+    el.style.height = (5 + Math.random()*7)+'px';
+    el.style.setProperty('--fall-dist', -(90+Math.random()*210)+'px');
+    el.style.setProperty('--rot', (Math.random()-0.5)*720+'deg');
+    const dur = 600+Math.random()*700, del = i*28;
+    el.style.animation = `confettiFall ${dur}ms cubic-bezier(0,0,0.3,1) ${del}ms forwards`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), dur+del+100);
+  }
+}
+
+document.getElementById('reset-btn').addEventListener('click', replayPuzzle);
+document.getElementById('play-again-btn').addEventListener('click', () => generateAndLoad(ROWS, COLS));
+
+document.getElementById('undo-btn').addEventListener('click', () => {
+  if (rectangles.length === 0) return;
+  rectangles.pop(); colorIdx = Math.max(0, colorIdx-1); render();
+});
+
+function generateAndLoad(rows, cols) {
+  const allBtns = [...document.querySelectorAll('.size-btn'), document.getElementById('new-btn')];
+  allBtns.forEach(b => b.disabled = true);
+  const newBtn = document.getElementById('new-btn');
+  newBtn.textContent = 'Generando\u2026';
+  setTimeout(() => {
+    try {
+      const cfg = SIZE_CONFIG[rows] || {};
+      const puzzle = ShikakuEngine.generatePuzzle(rows, cols, { maxArea: cfg.maxArea });
+      loadPuzzle(puzzle.clues);
+    } catch(e) { console.error(e); }
+    allBtns.forEach(b => b.disabled = false);
+    newBtn.textContent = 'Nuevo juego';
+  }, 20);
+}
+
+document.getElementById('new-btn').addEventListener('click', () => generateAndLoad(ROWS, COLS));
+
+document.querySelectorAll('.size-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const n = +btn.dataset.size; ROWS = n; COLS = n;
+    document.querySelectorAll('.size-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.size === n));
+    generateAndLoad(n, n);
+  });
+});
+</script>
+</body>
+</html>
