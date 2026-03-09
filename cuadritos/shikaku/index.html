@@ -377,19 +377,23 @@ button:active { background: var(--ink-light); color: var(--paper); }
     <p class="panel-label">Tamaño</p>
     <button class="size-btn" data-size="3">
       <span class="size-dim">3 × 3</span>
-      <span class="size-lbl">Rápido</span>
+      <span class="size-lbl">Explicación</span>
     </button>
     <button class="size-btn active" data-size="5">
       <span class="size-dim">5 × 5</span>
+      <span class="size-lbl">Rápido</span>
+    </button>
+    <button class="size-btn" data-size="9">
+      <span class="size-dim">9 × 9</span>
       <span class="size-lbl">Clásico</span>
     </button>
-    <button class="size-btn" data-size="7">
-      <span class="size-dim">7 × 7</span>
-      <span class="size-lbl">Medio</span>
-    </button>
-    <button class="size-btn" data-size="15">
-      <span class="size-dim">15 × 15</span>
+    <button class="size-btn" data-size="13">
+      <span class="size-dim">13 × 13</span>
       <span class="size-lbl">Difícil</span>
+    </button>
+    <button class="size-btn" data-size="17">
+      <span class="size-dim">17 × 17</span>
+      <span class="size-lbl">Muy difícil</span>
     </button>
   </aside>
 
@@ -427,8 +431,9 @@ button:active { background: var(--ink-light); color: var(--paper); }
 const SIZE_CONFIG = {
   3:  { cell: 90,  clueFont: 32, maxArea:  4 },
   5:  { cell: 68,  clueFont: 24, maxArea:  8 },
-  7:  { cell: 54,  clueFont: 19, maxArea: 14 },
-  15: { cell: 32,  clueFont: 12, maxArea: 20 },
+  9:  { cell: 50,  clueFont: 18, maxArea: 16 },
+  13: { cell: 36,  clueFont: 13, maxArea: 22 },
+  17: { cell: 26,  clueFont:  9, maxArea: 28 },
 };
 
 let ROWS = 5, COLS = 5, CELL = SIZE_CONFIG[5].cell;
